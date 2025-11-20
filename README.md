@@ -140,16 +140,3 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for more 
 - Only public keys are stored server-side for encryption purposes.
 - For development use only—review, audit and adapt for production!
 
-***
-
-Let me know if you want any customizations (badges, screenshots, deployment instructions, etc).
-
-[1](https://github.com/topics/readme-template)
-[2](https://github.com/othneildrew/Best-README-Template)
-[3](https://github.com/topics/readme-template-list)
-[4](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes)
-[5](https://gprm.itsvg.in)
-[6](https://www.youtube.com/watch?v=eVGEea7adDM)
-[7](https://github.com/topics/readme)
-[8](https://github.com/durgeshsamariya/awesome-github-profile-readme-templates)
-[9](https://rahuldkjain.github.io/gh-profile-readme-generator/)
