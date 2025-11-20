@@ -27,8 +27,8 @@ A real-time chat application with end-to-end RSA/AES encryption and self-destruc
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/[kunaltak606]/[self-destruct-chat].git
-   cd [self-destruct-chat]
+   git clone https://github.com/kunaltak606/self-destruct-chat.git
+   cd self-destruct-chat
    ```
 
 2. **Install dependencies:**
