@@ -106,25 +106,66 @@ export default function Chat({ user }) {
   const [receiver, setReceiver] = useState('');
 
   // Function to decrypt messages
-  const decryptMessage = async (encryptedMsg) => {
-    try {
-      const privKeyString = localStorage.getItem('privateKey');
-      if (!privKeyString) throw new Error("Private key not found");
-      const privateKey = await importRSAPrivateKey(privKeyString);
-      const decryptedAESRawKey = await decryptAESKeyWithRSA(encryptedMsg.encryptedAESKey, privateKey);
-      const aesKey = await importAESKey(decryptedAESRawKey);
-      return await decryptMessageAES(encryptedMsg.encryptedMessage, encryptedMsg.iv, aesKey);
-    } catch {
-      return "[Unable to decrypt]";
-    }
+const decryptMessage = async (encryptedMsg) => {
+  try {
+    const privKeyString = localStorage.getItem('privateKey');
+    if (!privKeyString) throw new Error("Private key not found");
+    console.log("Decrypting with private key", privKeyString);
+    const privateKey = await importRSAPrivateKey(privKeyString);
+
+    console.log('Encrypted AES key:', encryptedMsg.encryptedAESKey);
+    const decryptedAESRawKey = await decryptAESKeyWithRSA(encryptedMsg.encryptedAESKey, privateKey);
+    const aesKey = await importAESKey(decryptedAESRawKey);
+    const plaintext = await decryptMessageAES(encryptedMsg.encryptedMessage, encryptedMsg.iv, aesKey);
+    return plaintext;
+  } catch (err) {
+    console.error('Decryption error:', err);
+    return "[Unable to decrypt]";
+  }
+};
+
+// Existing effect: fetch on user or receiver change and handle socket receive
+
+useEffect(() => {
+  if (!user || !receiver) return;
+
+  // Join socket room for the logged-in user
+  socket.emit('join', user);
+
+  // Fetch message history once on load or receiver change
+  axios.get(`http://localhost:5000/messages/${user}/${receiver}`)
+    .then(async res => {
+      const decryptedMessages = await Promise.all(
+        res.data.map(async (msg) => {
+          const text = await decryptMessage(msg);
+          return { ...msg, text };
+        })
+      );
+      setMessages(decryptedMessages);
+    })
+    .catch(err => console.error('Failed to load messages:', err));
+
+  // Handle incoming messages in real-time
+  const handleReceiveMessage = async (encryptedMsg) => {
+    const text = await decryptMessage(encryptedMsg);
+    setMessages(prev => [...prev, { ...encryptedMsg, text }]);
   };
 
-  useEffect(() => {
-    if (!user || !receiver) return;
+  socket.on('receive_message', handleReceiveMessage);
 
-    // Fetch historical messages between user and receiver
+  return () => {
+    socket.off('receive_message', handleReceiveMessage);
+  };
+}, [user, receiver]);
+
+
+// Add polling effect: refresh messages every 30 seconds to reflect deletions
+useEffect(() => {
+  if (!user || !receiver) return;
+
+  const intervalId = setInterval(() => {
     axios.get(`http://localhost:5000/messages/${user}/${receiver}`)
-      .then(async (res) => {
+      .then(async res => {
         const decryptedMessages = await Promise.all(
           res.data.map(async (msg) => {
             const text = await decryptMessage(msg);
@@ -134,20 +175,11 @@ export default function Chat({ user }) {
         setMessages(decryptedMessages);
       })
       .catch(err => console.error('Failed to load messages:', err));
+  }, 30000); // refresh every 30 seconds
 
-    socket.emit('join', user);
+  return () => clearInterval(intervalId);
+}, [user, receiver]);
 
-    const handleReceiveMessage = async (encryptedMsg) => {
-      const text = await decryptMessage(encryptedMsg);
-      setMessages((prev) => [...prev, { ...encryptedMsg, text }]);
-    };
-
-    socket.on('receive_message', handleReceiveMessage);
-
-    return () => {
-      socket.off('receive_message', handleReceiveMessage);
-    };
-  }, [user, receiver]);
 
   const handleSend = async () => {
     if (!input.trim() || !receiver.trim()) return;
@@ -204,8 +236,8 @@ export default function Chat({ user }) {
       >
         {messages
           .filter(msg => msg.receiver === user || msg.sender === user)
-          .map((msg, idx) => (
-            <div key={idx} style={{ marginBottom: '10px' }}>
+          .map(msg => (
+              <div key={msg._id} style={{ marginBottom: '10px' }}>
               <b>{msg.sender} → {msg.receiver}:</b> {msg.text}
               <br />
               <small>{new Date(msg.timestamp).toLocaleString()}</small>

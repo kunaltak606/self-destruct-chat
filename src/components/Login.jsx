@@ -41,22 +41,26 @@ export default function Login({ setUser }) {
     try {
       const res = await axios.post('http://localhost:5000/login', { username, password });
       if (res.data && res.data.message === 'Login successful') {
-        // Generate RSA key pair
-        const keyPair = await generateRSAKeyPair();
 
-        // Export keys
-        const publicKeyBase64 = await exportPublicKey(keyPair.publicKey);
-        const privateKeyJson = await exportPrivateKey(keyPair.privateKey);
+        let privateKeyJson = localStorage.getItem('privateKey');
+        if (!privateKeyJson) {
+          // No private key stored yet, generate new keys
+          const keyPair = await generateRSAKeyPair();
 
-        // Save private key locally (only client side!)
-        localStorage.setItem('privateKey', privateKeyJson);
+          const publicKeyBase64 = await exportPublicKey(keyPair.publicKey);
+          privateKeyJson = await exportPrivateKey(keyPair.privateKey);
 
-        // Send public key to backend server
-        await axios.post('http://localhost:5000/updatePublicKey', {
-          username,
-          publicKey: publicKeyBase64,
-        });
+          // Save private key locally
+          localStorage.setItem('privateKey', privateKeyJson);
 
+          // Send public key to backend
+          await axios.post('http://localhost:5000/updatePublicKey', {
+            username,
+            publicKey: publicKeyBase64,
+          });
+        }
+
+        // Now you have a persistent private key for this user session
         setUser(username);
         navigate('/chat');
       }
@@ -65,6 +69,7 @@ export default function Login({ setUser }) {
       else setError('Login failed');
     }
   };
+
 
   return (
     <div style={{ maxWidth: '400px', margin: 'auto', padding: '2rem' }}>
